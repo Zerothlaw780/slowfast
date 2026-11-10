@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="SlowFast",
-    version="0.0.1",
+    version="0.1.0",
     author="DigiNova",
     author_email='info@diginova.com.tr',
     description="Video action recognition with the SlowFast network (PyTorchVideo, Kinetics-400)",
