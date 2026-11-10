@@ -1,7 +1,7 @@
 """
 SlowFast: video action recognition.
 
-Package Init version: the image is passed through unchanged so the package can be
+Model Design version: the image is passed through unchanged so the package can be
 registered and tested in a workflow. The model (bootstrap) and the frame buffer are
 added in the Executor Implement step.
 """
@@ -28,7 +28,12 @@ class SlowFast(Capsule):
         configs = self.request.model.configs.executor.value.value.configs
 
         self.image = self.request.get_param("inputImage")
-        self.draw = configs.drawResult.value.value          # True / False
+        self.device = configs.device.value.value                  # "CPU" / "GPU"
+        self.clip_frames = configs.clipFrames.value
+        self.interval = configs.inferenceInterval.value
+        self.top_k = configs.topK.value
+        self.score_threshold = configs.scoreThreshold.value
+        self.draw = configs.drawResult.value.value                # True / False
 
     @staticmethod
     def bootstrap(config: dict = None) -> dict:
@@ -40,6 +45,8 @@ class SlowFast(Capsule):
         if img is None:
             raise ValueError("SlowFast - input image could not be read (frame missing in Redis)")
 
+        # Model Design: outputs are wired, the model itself comes in Executor Implement.
+        self.result = [{"rank": 0, "action": "warming up", "score": 0.0}]
         self.output_image = Image.set_frame(img=img, package_uID=self.uID, redis_db=self.redis_db)
         return build_response(context=self)
 

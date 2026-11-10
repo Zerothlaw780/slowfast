@@ -1,18 +1,35 @@
-from pydantic import validator
+from pydantic import Field, validator
 from typing import List, Optional, Union, Literal
-from sdks.novavision.src.base.model import Package, Image, Inputs, Configs, Outputs, Response, Request, Output, Input, Config
+from sdks.novavision.src.base.model import (
+    Package,
+    Image,
+    Inputs,
+    Configs,
+    Outputs,
+    Response,
+    Request,
+    Output,
+    Input,
+    Config,
+)
 
 
 # ============ INPUTS ============
 
+
 class InputImage(Input):
+    """
+    Video frames, one per request, in order. The package keeps the most recent frames
+    in a buffer and runs the model on them as one clip.
+    """
+
     name: Literal["inputImage"] = "inputImage"
     value: Union[List[Image], Image]
     type: str = "object"
 
     @validator("type", pre=True, always=True)
     def set_type_based_on_value(cls, value, values):
-        value = values.get('value')
+        value = values.get("value")
         if isinstance(value, Image):
             return "object"
         elif isinstance(value, list):
@@ -24,17 +41,19 @@ class InputImage(Input):
 
 # ============ OUTPUTS ============
 
+
 class OutputImage(Output):
     """
-    Every frame, passed through. If Draw Result is enabled, the predicted action is written on it.
+    Every frame, passed through. If Draw Result is enabled, the latest prediction is written on it.
     """
+
     name: Literal["outputImage"] = "outputImage"
     value: Union[List[Image], Image]
     type: str = "object"
 
     @validator("type", pre=True, always=True)
     def set_type_based_on_value(cls, value, values):
-        value = values.get('value')
+        value = values.get("value")
         if isinstance(value, Image):
             return "object"
         elif isinstance(value, list):
@@ -44,11 +63,133 @@ class OutputImage(Output):
         title = "Image"
 
 
-# ============ CONFIGS ============
-# Package Init: only Draw Result for now. Device, inference interval and top-k are added in Model Design.
+class ActionResult(Output):
+    """
+    Sent for every frame as a list with one row per predicted action, best first:
+    [{rank (int), action (Kinetics-400 class name), score (0-1)}].
+    Between model runs the latest prediction is repeated. Until the first clip is full
+    a single row is sent: [{rank: 0, action: "warming up", score: 0.0}].
+    """
 
-class DrawResultEnable(Config):
-    name: Literal["Enable"] = "Enable"
+    name: Literal["actionResult"] = "actionResult"
+    value: List[dict]
+    type: Literal["list"] = "list"
+
+    class Config:
+        title = "Action Result"
+
+
+# ============ CONFIGS ============
+
+
+class DeviceCPU(Config):
+    name: Literal["CPU"] = "CPU"
+    value: Literal["CPU"] = "CPU"
+    type: Literal["string"] = "string"
+    field: Literal["option"] = "option"
+
+    class Config:
+        title = "CPU"
+
+
+class DeviceGPU(Config):
+    name: Literal["GPU"] = "GPU"
+    value: Literal["GPU"] = "GPU"
+    type: Literal["string"] = "string"
+    field: Literal["option"] = "option"
+
+    class Config:
+        title = "GPU"
+
+
+class Device(Config):
+    """
+    Where the model runs:
+    - CPU: works on every device. One clip takes about 2 s, so set Inference Interval accordingly.
+    - GPU: much faster, needs an NVIDIA GPU with CUDA. If no GPU is found the package falls back to CPU
+      and writes a warning to the log.
+    """
+
+    name: Literal["Device"] = "Device"
+    value: Union[DeviceCPU, DeviceGPU]
+    type: Literal["object"] = "object"
+    field: Literal["dropdownlist"] = "dropdownlist"
+
+    class Config:
+        title = "Device"
+        json_schema_extra = {"shortDescription": "Run on CPU or GPU"}
+
+
+class ClipFrames(Config):
+    """
+    How many recent frames form one clip. The clip is resampled to the 32 frames the model expects
+    (8 of them go to the Slow pathway). Clip duration = Clip Frames / frame rate; the model was trained
+    on clips of about 2 seconds (64 frames at 30 fps, 20 frames at 10 fps).
+    """
+
+    name: Literal["ClipFrames"] = "ClipFrames"
+    value: int = Field(ge=8, le=128, default=32)
+    type: Literal["number"] = "number"
+    field: Literal["textInput"] = "textInput"
+    placeHolder: Literal["[8, 128]"] = "[8, 128]"
+
+    class Config:
+        title = "Clip Frames"
+        json_schema_extra = {"shortDescription": "Frames per clip"}
+
+
+class InferenceInterval(Config):
+    """
+    Run the model once every N new frames; frames in between reuse the latest prediction.
+    Lower values react faster but cost more compute. On CPU keep N x (1 / frame rate) above ~2 s.
+    """
+
+    name: Literal["InferenceInterval"] = "InferenceInterval"
+    value: int = Field(ge=1, le=300, default=16)
+    type: Literal["number"] = "number"
+    field: Literal["textInput"] = "textInput"
+    placeHolder: Literal["[1, 300]"] = "[1, 300]"
+
+    class Config:
+        title = "Inference Interval"
+        json_schema_extra = {"shortDescription": "Run every N frames"}
+
+
+class TopK(Config):
+    """
+    How many of the most likely actions are reported, best first.
+    """
+
+    name: Literal["TopK"] = "TopK"
+    value: int = Field(ge=1, le=5, default=3)
+    type: Literal["number"] = "number"
+    field: Literal["textInput"] = "textInput"
+    placeHolder: Literal["[1, 5]"] = "[1, 5]"
+
+    class Config:
+        title = "Top K"
+        json_schema_extra = {"shortDescription": "Number of actions reported"}
+
+
+class ScoreThreshold(Config):
+    """
+    Actions with a score below this value are not reported. 0 reports all Top K actions.
+    If no action passes, the best one is still reported so the output is never empty.
+    """
+
+    name: Literal["ScoreThreshold"] = "ScoreThreshold"
+    value: float = Field(ge=0.0, le=1.0, default=0.2)
+    type: Literal["number"] = "number"
+    field: Literal["textInput"] = "textInput"
+    placeHolder: Literal["[0.0, 1.0]"] = "[0.0, 1.0]"
+
+    class Config:
+        title = "Score Threshold"
+        json_schema_extra = {"shortDescription": "Minimum action score"}
+
+
+class DrawResultTrue(Config):
+    name: Literal["True"] = "True"
     value: Literal[True] = True
     type: Literal["bool"] = "bool"
     field: Literal["option"] = "option"
@@ -57,8 +198,8 @@ class DrawResultEnable(Config):
         title = "Enable"
 
 
-class DrawResultDisable(Config):
-    name: Literal["Disable"] = "Disable"
+class DrawResultFalse(Config):
+    name: Literal["False"] = "False"
     value: Literal[False] = False
     type: Literal["bool"] = "bool"
     field: Literal["option"] = "option"
@@ -69,32 +210,38 @@ class DrawResultDisable(Config):
 
 class DrawResult(Config):
     """
-    Write the predicted action and its score on the output image.
+    Write the latest predicted actions and their scores on the output image.
     """
+
     name: Literal["DrawResult"] = "DrawResult"
-    value: Union[DrawResultEnable, DrawResultDisable]
+    value: Union[DrawResultTrue, DrawResultFalse]
     type: Literal["object"] = "object"
     field: Literal["dropdownlist"] = "dropdownlist"
 
     class Config:
         title = "Draw Result"
-        json_schema_extra = {
-            "shortDescription": "Show prediction on image"
-        }
+        json_schema_extra = {"shortDescription": "Show prediction on image"}
 
 
 # ============ EXECUTOR ============
+
 
 class SlowFastInputs(Inputs):
     inputImage: InputImage
 
 
 class SlowFastConfigs(Configs):
+    device: Device
+    clipFrames: ClipFrames
+    inferenceInterval: InferenceInterval
+    topK: TopK
+    scoreThreshold: ScoreThreshold
     drawResult: DrawResult
 
 
 class SlowFastOutputs(Outputs):
     outputImage: OutputImage
+    actionResult: ActionResult
 
 
 class SlowFastRequest(Request):
@@ -102,9 +249,7 @@ class SlowFastRequest(Request):
     configs: SlowFastConfigs
 
     class Config:
-        json_schema_extra = {
-            "target": "configs"
-        }
+        json_schema_extra = {"target": "configs"}
 
 
 class SlowFastResponse(Response):
@@ -113,8 +258,10 @@ class SlowFastResponse(Response):
 
 class SlowFastExecutor(Config):
     """
-    Recognizes the action in a short video clip with the SlowFast network (Kinetics-400 classes).
+    Recognizes the action in the most recent frames with the SlowFast network
+    (slowfast_r50, Kinetics-400, 400 action classes).
     """
+
     name: Literal["SlowFast"] = "SlowFast"
     value: Union[SlowFastRequest, SlowFastResponse]
     type: Literal["object"] = "object"
@@ -122,14 +269,11 @@ class SlowFastExecutor(Config):
 
     class Config:
         title = "SlowFast Action Recognition"
-        json_schema_extra = {
-            "target": {
-                "value": 0
-            }
-        }
+        json_schema_extra = {"target": {"value": 0}}
 
 
 # ============ PACKAGE ============
+
 
 class ConfigExecutor(Config):
     name: Literal["ConfigExecutor"] = "ConfigExecutor"
@@ -139,9 +283,7 @@ class ConfigExecutor(Config):
 
     class Config:
         title = "Task"
-        json_schema_extra = {
-            "target": "value"
-        }
+        json_schema_extra = {"target": "value"}
 
 
 class PackageConfigs(Configs):

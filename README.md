@@ -17,8 +17,8 @@ a **Slow** pathway that reads few frames in detail (what is in the scene) and a 
 that reads many frames with fewer channels (how things move). This package uses the pretrained
 `slowfast_r50` model from PyTorchVideo, trained on Kinetics-400 (400 action classes).
 
-> Package Init: the package currently passes the input image through unchanged.
-> The model, configs and outputs are added in the next steps.
+> Model Design: inputs, configs and outputs are defined. The model itself is added in the
+> Executor Implement step; until then the image passes through and Action Result reports "warming up".
 
 **Typical use cases:**
 
@@ -40,7 +40,12 @@ that reads many frames with fewer channels (how things move). This package uses 
 
 | Parameter | Type | Field Type (UI control) | Allowed Values / Range | Default | Description |
 |---|---|---|---|---|---|
-| `DrawResult` | bool | dropdownlist | Enable / Disable | — | Write the predicted action and its score on the output image |
+| `Device` | string | dropdownlist | CPU / GPU | — | Where the model runs. GPU falls back to CPU (with a log warning) if no CUDA GPU is found |
+| `ClipFrames` | number | textInput | [8, 128] | 32 | Recent frames that form one clip; resampled to the 32 frames the model expects |
+| `InferenceInterval` | number | textInput | [1, 300] | 16 | Run the model once every N new frames; frames in between reuse the latest prediction |
+| `TopK` | number | textInput | [1, 5] | 3 | How many of the most likely actions are reported |
+| `ScoreThreshold` | number | textInput | [0.0, 1.0] | 0.2 | Actions below this score are not reported (the best one is always reported) |
+| `DrawResult` | bool | dropdownlist | Enable / Disable | — | Write the latest predicted actions and scores on the output image |
 
 ---
 
@@ -49,6 +54,7 @@ that reads many frames with fewer channels (how things move). This package uses 
 | Field Name | Kind/Type | Description |
 |---|---|---|
 | `outputImage` | Image (object or list) | The input frame, with the prediction drawn on it if Draw Result is enabled |
+| `actionResult` | list of dict | One row per action, best first: `{rank, action, score}`. Until the first clip is full: `[{rank: 0, action: "warming up", score: 0.0}]` |
 
 ---
 

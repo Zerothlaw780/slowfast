@@ -7,13 +7,15 @@ from capsules.SlowFast.src.models.PackageModel import (
     SlowFastResponse,
     SlowFastOutputs,
     OutputImage,
+    ActionResult,
 )
 
 
 def build_response(context):
     output_image = OutputImage(value=context.output_image)
+    action_result = ActionResult(value=context.result)
 
-    outputs = SlowFastOutputs(outputImage=output_image)
+    outputs = SlowFastOutputs(outputImage=output_image, actionResult=action_result)
     response = SlowFastResponse(outputs=outputs)
     executor = SlowFastExecutor(value=response)
     config_executor = ConfigExecutor(value=executor)
