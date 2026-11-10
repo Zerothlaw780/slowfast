@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.DS_Store
+# model weights are downloaded at runtime, never committed (GitHub limit is 100 MB)
+src/weights/
+*.pyth
+*.pt
