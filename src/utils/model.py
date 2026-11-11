@@ -1,18 +1,16 @@
 """Loading and running the SlowFast model."""
 
-import json
 import os
 
 import numpy as np
 import torch
 
-LABELS_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "kinetics400_classes.json")
+from .labels import KINETICS400
 
 
 def load_labels():
-    """400 Kinetics class names, index = model output index (alphabetical, as in the Kinetics-400 release)."""
-    with open(LABELS_PATH) as f:
-        return json.load(f)
+    """400 Kinetics class names, index = model output index."""
+    return list(KINETICS400)
 
 
 def load_model(weights_dir: str):

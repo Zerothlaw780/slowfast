@@ -69,7 +69,7 @@ To be added.
 ## 6. Limitations and Notes
 
 - Runs in the `diginova-pytorch` image (torch 2.6.0, torchvision 0.21.0) and needs `pytorchvideo==0.1.5`.
-- Model weights (~264 MB) are downloaded on the first start into `src/weights/checkpoints/` and reused afterwards; they are not stored in the repository. Set `SLOWFAST_WEIGHTS_DIR` to use another folder.
+- Model weights (~264 MB) are downloaded on the first start into `/storage/model/slowfast/checkpoints/` (or `src/weights/` outside NovaVision) and reused afterwards; they are not stored in the repository. Set `SLOWFAST_WEIGHTS_DIR` to use another folder.
 - Predictions are Kinetics-400 classes (sports, daily activities, playing instruments...). Classes such as "walking", "fighting" or "falling" are not in the list; recognizing them needs fine-tuning.
 - `pytorchvideo.transforms` does not work with torchvision >= 0.17, so preprocessing is implemented in `src/utils/clip.py`.
 - On an M1 CPU one clip takes about 2.2 s, so predictions are made every few seconds, not every frame.
