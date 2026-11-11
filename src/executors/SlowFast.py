@@ -24,7 +24,9 @@ from capsules.SlowFast.src.utils.model import load_labels, load_model, resolve_d
 from capsules.SlowFast.src.utils.draw import draw_actions, result_lines
 
 logger = LoggerManager()
-WEIGHTS_DIR = os.environ.get("SLOWFAST_WEIGHTS_DIR", os.path.join(os.path.dirname(__file__), "..", "weights"))
+# /storage is a volume that survives container restarts and package updates; outside NovaVision use src/weights
+_DEFAULT_WEIGHTS = "/storage/model/slowfast" if os.path.isdir("/storage") else os.path.join(os.path.dirname(__file__), "..", "weights")
+WEIGHTS_DIR = os.environ.get("SLOWFAST_WEIGHTS_DIR", _DEFAULT_WEIGHTS)
 
 
 class SlowFast(Capsule):
