@@ -18,10 +18,12 @@ setuptools.setup(
 
     packages=[
         'novavision.SlowFast',
+        'novavision.SlowFast.configs',
         'novavision.SlowFast.executors',
         'novavision.SlowFast.models',
         'novavision.SlowFast.utils',
     ],
     package_dir={'novavision.SlowFast': 'src'},
+    package_data={'novavision.SlowFast.configs': ['*.json']},
     python_requires=">=3.6"
 )

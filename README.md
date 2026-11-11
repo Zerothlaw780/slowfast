@@ -17,8 +17,10 @@ a **Slow** pathway that reads few frames in detail (what is in the scene) and a 
 that reads many frames with fewer channels (how things move). This package uses the pretrained
 `slowfast_r50` model from PyTorchVideo, trained on Kinetics-400 (400 action classes).
 
-> Model Design: inputs, configs and outputs are defined. The model itself is added in the
-> Executor Implement step; until then the image passes through and Action Result reports "warming up".
+**How it works:** every frame is resized (short side 256, center crop 256x256) and added to a buffer.
+When the buffer holds *Clip Frames* frames, the model runs once every *Inference Interval* frames on
+32 evenly spaced frames from the buffer (8 of them go to the Slow pathway). Frames in between reuse
+the latest prediction. Each video stream has its own buffer.
 
 **Typical use cases:**
 
@@ -67,12 +69,17 @@ To be added.
 ## 6. Limitations and Notes
 
 - Runs in the `diginova-pytorch` image (torch 2.6.0, torchvision 0.21.0) and needs `pytorchvideo==0.1.5`.
-- Model weights (~264 MB) are downloaded at runtime and are not stored in the repository.
+- Model weights (~264 MB) are downloaded on the first start into `src/weights/checkpoints/` and reused afterwards; they are not stored in the repository. Set `SLOWFAST_WEIGHTS_DIR` to use another folder.
+- Predictions are Kinetics-400 classes (sports, daily activities, playing instruments...). Classes such as "walking", "fighting" or "falling" are not in the list; recognizing them needs fine-tuning.
+- `pytorchvideo.transforms` does not work with torchvision >= 0.17, so preprocessing is implemented in `src/utils/clip.py`.
 - On an M1 CPU one clip takes about 2.2 s, so predictions are made every few seconds, not every frame.
 
 ---
 
 ## 7. Development
+
+**Tests:** `python -m pytest tests` (needs torch, opencv and pytorchvideo; the model test uses random weights, so no download is needed).
+
 
 **Setup (once per clone):**
 
