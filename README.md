@@ -6,7 +6,7 @@
 
 **Status:** Experimental
 
-**Last Updated:** 10.11.2026
+**Last Updated:** 11.11.2026
 
 ---
 
@@ -62,7 +62,28 @@ the latest prediction. Each video stream has its own buffer.
 
 ## 5. Use Case Examples
 
-To be added.
+**Use case 1: Activity log for a camera**
+
+Video Feed (camera or recorded video) → **SlowFast** → Video View and Data GridView. SlowFast writes the
+current action on the image, and Data GridView keeps a time-stamped list of the predicted actions
+(Key: `rank,action,score`). Useful to see what is happening in front of a camera over a shift, or to
+review a recording without watching all of it.
+
+**Use case 2: Alert when a specific action is seen**
+
+Video Feed → **SlowFast** → If (action is the one of interest and score is above a limit) → Limit Rate
+(e.g. one alert per minute) → Notification (e-mail). SlowFast supplies the `actionResult` list; the If
+node checks the first row. Typical targets are actions that should not happen in an area, for example
+"smoking" or "texting". Choose a score limit that suits the camera; check the scores in Data GridView
+first.
+
+**Use case 3: Tagging videos for search or a dataset**
+
+Video Feed playing recorded clips → **SlowFast** with a high Inference Interval → Data GridView or a
+Collection. Each clip gets the Kinetics labels that describe it, so a video archive can be searched by
+action, or clips of a certain action can be collected to build a training set. Together with the
+fine-tuning notebook, these clips can be used to train SlowFast on your own classes.
+
 
 ---
 
