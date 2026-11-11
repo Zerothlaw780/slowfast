@@ -24,9 +24,16 @@ the latest prediction. Each video stream has its own buffer.
 
 **Typical use cases:**
 
-- Recognizing what people are doing in a camera stream
-- Tagging video clips by action for search or dataset creation
-- Triggering an alert when a specific action is seen
+- Public safety and activity recognition
+- Smart CCTV and video surveillance
+- Traffic monitoring and incident detection
+- Sports performance analysis
+- Human behavior and fall detection
+
+The pretrained model covers everyday activities and many sports out of the box (e.g. "archery",
+"playing basketball", "smoking", "texting"). Actions that are not among the 400 Kinetics classes, such
+as falling, fighting or traffic incidents, need a model fine-tuned on your own videos
+(see `notebooks/train_slowfast.ipynb`).
 
 ---
 
