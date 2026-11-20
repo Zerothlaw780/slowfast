@@ -6,7 +6,7 @@
 
 **Status:** Experimental
 
-**Last Updated:** 11.11.2026
+**Last Updated:** 20.11.2026
 
 ---
 
@@ -33,7 +33,7 @@ the latest prediction. Each video stream has its own buffer.
 The pretrained model covers everyday activities and many sports out of the box (e.g. "archery",
 "playing basketball", "smoking", "texting"). Actions that are not among the 400 Kinetics classes, such
 as falling, fighting or traffic incidents, need a model fine-tuned on your own videos
-(see `notebooks/train_slowfast.ipynb`).
+(see `notebooks/train_slowfast.ipynb`). The fine-tuned checkpoint is selected in the package with *Model → Custom*.
 
 ---
 
@@ -49,6 +49,7 @@ as falling, fighting or traffic incidents, need a model fine-tuned on your own v
 
 | Parameter | Type | Field Type (UI control) | Allowed Values / Range | Default | Description |
 |---|---|---|---|---|---|
+| `Model` | string | dependentDropdownlist | Kinetics-400 (pretrained) / Custom (fine-tuned) | — | Which weights are used. *Custom* shows `WeightsId`: a checkpoint (.pth) from `notebooks/train_slowfast.ipynb` uploaded to Assets; its class names are used in Action Result |
 | `Device` | string | dropdownlist | CPU / GPU | — | Where the model runs. GPU falls back to CPU (with a log warning) if no CUDA GPU is found |
 | `ClipFrames` | number | textInput | [8, 128] | 32 | Recent frames that form one clip; resampled to the 32 frames the model expects |
 | `InferenceInterval` | number | textInput | [1, 300] | 16 | Run the model once every N new frames; frames in between reuse the latest prediction |
@@ -63,7 +64,7 @@ as falling, fighting or traffic incidents, need a model fine-tuned on your own v
 | Field Name | Kind/Type | Description |
 |---|---|---|
 | `outputImage` | Image (object or list) | The input frame, with the prediction drawn on it if Draw Result is enabled |
-| `actionResult` | list of dict | One row per action, best first: `{rank, action, score}`. Until the first clip is full: `[{rank: 0, action: "warming up", score: 0.0}]` |
+| `actionResult` | list of dict | One row per action, best first: `{rank, action, score}` (Kinetics-400 or custom class names). Until the first clip is full: `[{rank: 0, action: "warming up", score: 0.0}]` |
 
 ---
 
@@ -97,8 +98,9 @@ fine-tuning notebook, these clips can be used to train SlowFast on your own clas
 ## 6. Limitations and Notes
 
 - Runs in the `diginova-pytorch` image (torch 2.6.0, torchvision 0.21.0) and needs `pytorchvideo==0.1.5`.
-- Model weights (~264 MB) are downloaded on the first start into `/storage/model/slowfast/checkpoints/` (or `src/weights/` outside NovaVision) and reused afterwards; they are not stored in the repository. Set `SLOWFAST_WEIGHTS_DIR` to use another folder.
-- Predictions are Kinetics-400 classes (sports, daily activities, playing instruments...). Classes such as "walking", "fighting" or "falling" are not in the list; recognizing them needs fine-tuning.
+- Kinetics weights (~264 MB) are downloaded on the first start into `/storage/model/slowfast/checkpoints/` (or `src/weights/` outside NovaVision) and reused afterwards; they are not stored in the repository. Set `SLOWFAST_WEIGHTS_DIR` to use another folder.
+- A custom checkpoint is downloaded from Assets on first use into `/storage/model/slowfast/custom/<id>.pth`; the first prediction after selecting it waits for this download.
+- The Kinetics-400 classes cover sports, daily activities, playing instruments and similar actions. Classes such as "walking", "fighting" or "falling" are not in the list; recognizing them needs fine-tuning.
 - `pytorchvideo.transforms` does not work with torchvision >= 0.17, so preprocessing is implemented in `src/utils/clip.py`.
 - On an M1 Pro CPU one clip takes about 2.2 s, so predictions are made every few seconds, not every frame.
 
@@ -106,7 +108,7 @@ fine-tuning notebook, these clips can be used to train SlowFast on your own clas
 
 ## 7. Development
 
-**Fine-tuning:** `notebooks/train_slowfast.ipynb` (Colab or local) trains a new head on your own action classes, starting from the Kinetics-400 weights, with the same preprocessing as the package. The package itself still uses the Kinetics-400 model.
+**Fine-tuning:** `notebooks/train_slowfast.ipynb` (Colab or local) trains a new head on your own action classes, starting from the Kinetics-400 weights, with the same preprocessing as the package. Upload the resulting `.pth` file to Assets and select it with *Model → Custom (fine-tuned)*.
 
 **Tests:** `python -m pytest tests` (needs torch, opencv and pytorchvideo; the model test uses random weights, so no download is needed).
 

@@ -66,7 +66,7 @@ class OutputImage(Output):
 class ActionResult(Output):
     """
     Sent for every frame as a list with one row per predicted action, best first:
-    [{rank (int), action (Kinetics-400 class name), score (0-1)}].
+    [{rank (int), action (class name: Kinetics-400 or your custom classes), score (0-1)}].
     Between model runs the latest prediction is repeated. Until the first clip is full
     a single row is sent: [{rank: 0, action: "warming up", score: 0.0}].
     """
@@ -80,6 +80,66 @@ class ActionResult(Output):
 
 
 # ============ CONFIGS ============
+
+
+class CustomWeightsId(Config):
+    """
+    The fine-tuned checkpoint (.pth) created with notebooks/train_slowfast.ipynb, uploaded to Assets.
+    It holds the weights and the class names, so the package reports your own classes.
+    """
+
+    name: Literal["WeightsId"] = "WeightsId"
+    value: int
+    type: Literal["number"] = "number"
+    field: Literal["filePicker"] = "filePicker"
+
+    class Config:
+        title = "Weights File"
+        json_schema_extra = {
+            "shortDescription": "Fine-tuned checkpoint (.pth)",
+            "class": "portalium\\storage\\widgets\\FilePicker",
+            "options": {"multiple": 0, "returnAttribute": ["name"], "name": "app::logo_wide"},
+        }
+
+
+class ModelKinetics(Config):
+    name: Literal["Kinetics400"] = "Kinetics400"
+    value: Literal["Kinetics400"] = "Kinetics400"
+    type: Literal["string"] = "string"
+    field: Literal["option"] = "option"
+
+    class Config:
+        title = "Kinetics-400 (pretrained)"
+
+
+class ModelCustom(Config):
+    name: Literal["Custom"] = "Custom"
+    weightsId: CustomWeightsId
+    value: Literal["Custom"] = "Custom"
+    type: Literal["string"] = "string"
+    field: Literal["option"] = "option"
+
+    class Config:
+        title = "Custom (fine-tuned)"
+
+
+class Model(Config):
+    """
+    Which weights the package uses:
+    - Kinetics-400 (pretrained): 400 everyday and sports actions, no training needed.
+    - Custom (fine-tuned): your own action classes. Train with notebooks/train_slowfast.ipynb
+      (the Kinetics model is used as the backbone), upload the .pth file to Assets and select it here.
+    """
+
+    name: Literal["Model"] = "Model"
+    value: Union[ModelKinetics, ModelCustom]
+    type: Literal["object"] = "object"
+    field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
+
+    class Config:
+        title = "Model"
+        json_schema_extra = {"shortDescription": "Pretrained or fine-tuned"}
+
 
 
 class DeviceCPU(Config):
@@ -231,6 +291,7 @@ class SlowFastInputs(Inputs):
 
 
 class SlowFastConfigs(Configs):
+    model: Model
     device: Device
     clipFrames: ClipFrames
     inferenceInterval: InferenceInterval
@@ -259,7 +320,7 @@ class SlowFastResponse(Response):
 class SlowFastExecutor(Config):
     """
     Recognizes the action in the most recent frames with the SlowFast network
-    (slowfast_r50, Kinetics-400, 400 action classes).
+    (slowfast_r50; Kinetics-400 classes or your own fine-tuned classes).
     """
 
     name: Literal["SlowFast"] = "SlowFast"
