@@ -76,3 +76,17 @@ def test_download_once(tmp_path):
     src.write_bytes(b"changed")
     download(src.as_uri(), str(dst))  # already cached: not downloaded again
     assert dst.read_bytes() == b"abc"
+
+
+def test_ava_model_scores_each_box():
+    from pytorchvideo.models.hub import slowfast_r50_detection
+
+    from src.utils.clip import resize_short
+    from src.utils.model import predict_boxes
+
+    model = slowfast_r50_detection(pretrained=False).eval()  # random weights: checks shapes, not accuracy
+    frames = [resize_short(np.random.randint(0, 255, (480, 640, 3), np.uint8))[0] for _ in range(32)]
+    inputs = to_inputs(frames)
+    probs = predict_boxes(model, inputs, [[10, 20, 100, 240], [150, 30, 250, 250]])
+    assert probs.shape == (2, 80) and probs.min() >= 0 and probs.max() <= 1
+    assert predict_boxes(model, inputs, [[10, 20, 100, 240]]).shape == (1, 80)  # inputs list is reusable

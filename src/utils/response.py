@@ -8,6 +8,10 @@ from capsules.SlowFast.src.models.PackageModel import (
     SlowFastOutputs,
     OutputImage,
     ActionResult,
+    PersonActionsExecutor,
+    PersonActionsResponse,
+    PersonActionsOutputs,
+    OutputDetections,
 )
 
 
@@ -18,6 +22,20 @@ def build_response(context):
     outputs = SlowFastOutputs(outputImage=output_image, actionResult=action_result)
     response = SlowFastResponse(outputs=outputs)
     executor = SlowFastExecutor(value=response)
+    config_executor = ConfigExecutor(value=executor)
+    package_configs = PackageConfigs(executor=config_executor)
+
+    package = PackageHelper(packageModel=PackageModel, packageConfigs=package_configs)
+    return package.build_model(context)
+
+
+def build_person_response(context):
+    output_image = OutputImage(value=context.output_image)
+    output_detections = OutputDetections(value=context.output_detections)
+
+    outputs = PersonActionsOutputs(outputImage=output_image, outputDetections=output_detections)
+    response = PersonActionsResponse(outputs=outputs)
+    executor = PersonActionsExecutor(value=response)
     config_executor = ConfigExecutor(value=executor)
     package_configs = PackageConfigs(executor=config_executor)
 

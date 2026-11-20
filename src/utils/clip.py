@@ -86,3 +86,11 @@ class ClipBuffer:
     def mark_run(self, probs: np.ndarray):
         self.probs = probs
         self.last_run = self.count
+
+
+def resize_short(frame_bgr: np.ndarray, side: int = SIDE):
+    """BGR frame -> (RGB uint8 frame with short side = side, scale). No crop, so people at the edges stay visible."""
+    h, w = frame_bgr.shape[:2]
+    scale = side / min(h, w)
+    resized = cv2.resize(frame_bgr, (round(w * scale), round(h * scale)), interpolation=cv2.INTER_AREA)
+    return cv2.cvtColor(resized, cv2.COLOR_BGR2RGB), scale

@@ -79,6 +79,36 @@ class ActionResult(Output):
         title = "Action Result"
 
 
+class InputDetections(Input):
+    """
+    Person detections for the same frame, for example from YOLO (and optionally Object Tracking).
+    Each item needs boundingBox {left, top, width, height} and classLabel; trackerID is used when present.
+    """
+
+    name: Literal["inputDetections"] = "inputDetections"
+    value: List
+    type: Literal["list"] = "list"
+
+    class Config:
+        title = "Detections"
+
+
+class OutputDetections(Output):
+    """
+    The person detections of the current frame with an added "actions" field:
+    [{boundingBox, classLabel, ..., actions: [{action, score}]}], best action first. score is the
+    probability of that action (0-1); a person can have several actions (e.g. "stand" and "talk to").
+    actions is empty until the first clip is full and when no action passes Action Threshold.
+    """
+
+    name: Literal["outputDetections"] = "outputDetections"
+    value: list
+    type: Literal["list"] = "list"
+
+    class Config:
+        title = "Person Actions"
+
+
 # ============ CONFIGS ============
 
 
@@ -283,6 +313,39 @@ class DrawResult(Config):
         json_schema_extra = {"shortDescription": "Show prediction on image"}
 
 
+class PersonLabel(Config):
+    """
+    classLabel of the detections to analyse, as written by the detector (YOLO uses "person").
+    Leave empty to use every detection.
+    """
+
+    name: Literal["PersonLabel"] = "PersonLabel"
+    value: str = Field(default="person")
+    type: Literal["string"] = "string"
+    field: Literal["textInput"] = "textInput"
+
+    class Config:
+        title = "Person Class"
+        json_schema_extra = {"shortDescription": "Detections to analyse"}
+
+
+class ActionThreshold(Config):
+    """
+    Minimum probability for an action to be reported for a person (0-1). Each action is scored on its own,
+    so several actions can pass. Lower values report more (and less certain) actions.
+    """
+
+    name: Literal["ActionThreshold"] = "ActionThreshold"
+    value: float = Field(ge=0.0, le=1.0, default=0.3)
+    type: Literal["number"] = "number"
+    field: Literal["textInput"] = "textInput"
+    placeHolder: Literal["[0.0, 1.0]"] = "[0.0, 1.0]"
+
+    class Config:
+        title = "Action Threshold"
+        json_schema_extra = {"shortDescription": "Minimum action probability"}
+
+
 # ============ EXECUTOR ============
 
 
@@ -329,7 +392,55 @@ class SlowFastExecutor(Config):
     field: Literal["option"] = "option"
 
     class Config:
-        title = "SlowFast Action Recognition"
+        title = "Action Recognition (Kinetics)"
+        json_schema_extra = {"target": {"value": 0}}
+
+
+class PersonActionsInputs(Inputs):
+    inputImage: InputImage
+    inputDetections: InputDetections
+
+
+class PersonActionsConfigs(Configs):
+    device: Device
+    clipFrames: ClipFrames
+    inferenceInterval: InferenceInterval
+    personLabel: PersonLabel
+    topK: TopK
+    actionThreshold: ActionThreshold
+    drawResult: DrawResult
+
+
+class PersonActionsOutputs(Outputs):
+    outputImage: OutputImage
+    outputDetections: OutputDetections
+
+
+class PersonActionsRequest(Request):
+    inputs: Optional[PersonActionsInputs]
+    configs: PersonActionsConfigs
+
+    class Config:
+        json_schema_extra = {"target": "configs"}
+
+
+class PersonActionsResponse(Response):
+    outputs: PersonActionsOutputs
+
+
+class PersonActionsExecutor(Config):
+    """
+    Recognizes what each detected person is doing (stand, sit, walk, fall down, talk to... 60 AVA actions)
+    with the SlowFast network trained on AVA (slowfast_r50_detection). Needs person boxes from a detector.
+    """
+
+    name: Literal["PersonActions"] = "PersonActions"
+    value: Union[PersonActionsRequest, PersonActionsResponse]
+    type: Literal["object"] = "object"
+    field: Literal["option"] = "option"
+
+    class Config:
+        title = "Person Actions (AVA)"
         json_schema_extra = {"target": {"value": 0}}
 
 
@@ -337,8 +448,14 @@ class SlowFastExecutor(Config):
 
 
 class ConfigExecutor(Config):
+    """
+    Choose the task:
+    - Action Recognition (Kinetics): one label for what happens in the whole clip (400 activities and sports).
+    - Person Actions (AVA): actions of each person, using person boxes from a detector such as YOLO.
+    """
+
     name: Literal["ConfigExecutor"] = "ConfigExecutor"
-    value: Union[SlowFastExecutor]
+    value: Union[SlowFastExecutor, PersonActionsExecutor]
     type: Literal["executor"] = "executor"
     field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
 

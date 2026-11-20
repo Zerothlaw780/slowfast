@@ -67,6 +67,27 @@ def download(url: str, path: str, timeout: int = 120):
     return path
 
 
+def load_ava_model(weights_dir: str):
+    """
+    slowfast_r50_detection (8x8, AVA) from PyTorchVideo: actions per person box. The checkpoint is
+    downloaded once into weights_dir/checkpoints/ and reused on the next start.
+    """
+    os.makedirs(weights_dir, exist_ok=True)
+    torch.hub.set_dir(weights_dir)
+    from pytorchvideo.models.hub import slowfast_r50_detection
+
+    return slowfast_r50_detection(pretrained=True).eval()
+
+
+def predict_boxes(model, inputs, boxes_xyxy) -> np.ndarray:
+    """AVA probabilities (N, 80) for N boxes (x1, y1, x2, y2 in the clip's pixel coordinates). Multi-label: sigmoid per action."""
+    boxes = torch.as_tensor(np.asarray(boxes_xyxy, dtype=np.float32)).reshape(-1, 4)
+    boxes = torch.cat([torch.zeros(len(boxes), 1), boxes], dim=1).to(inputs[0].device)  # first column = clip index
+    with torch.inference_mode():
+        probs = model(list(inputs), boxes)  # the head already applies a sigmoid
+    return probs.float().cpu().numpy()
+
+
 def resolve_device(name: str):
     """'CPU' -> 'cpu'; 'GPU' -> 'cuda' if available, otherwise 'cpu'. Returns (device, fell_back)."""
     if name == "GPU":

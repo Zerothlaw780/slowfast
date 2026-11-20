@@ -14,13 +14,23 @@
 
 SlowFast is a video action recognition model. It looks at a short clip through two pathways:
 a **Slow** pathway that reads few frames in detail (what is in the scene) and a **Fast** pathway
-that reads many frames with fewer channels (how things move). This package uses the pretrained
-`slowfast_r50` model from PyTorchVideo, trained on Kinetics-400 (400 action classes).
+that reads many frames with fewer channels (how things move). The package has two tasks (*Task* menu):
+
+- **Action Recognition (Kinetics):** one label for what happens in the whole clip, with `slowfast_r50`
+  trained on Kinetics-400 (400 activities and sports), or your own fine-tuned classes.
+- **Person Actions (AVA):** the actions of each person, with `slowfast_r50_detection` trained on AVA
+  (60 atomic actions such as stand, sit, walk, run, fall down, fight/hit, talk to, carry/hold). Needs
+  person boxes from a detector such as YOLO.
 
 **How it works:** every frame is resized (short side 256, center crop 256x256) and added to a buffer.
 When the buffer holds *Clip Frames* frames, the model runs once every *Inference Interval* frames on
 32 evenly spaced frames from the buffer (8 of them go to the Slow pathway). Frames in between reuse
 the latest prediction. Each video stream has its own buffer.
+
+In *Person Actions* the frames are not cropped (people at the edges stay visible) and each frame's person
+detections are kept with it. The AVA model scores the person boxes of the middle frame of the clip; between
+runs, each person gets the result of the same person, matched by `trackerID` when Object Tracking is in
+the flow, otherwise by box overlap.
 
 **Typical use cases:**
 
@@ -42,6 +52,7 @@ as falling, fighting or traffic incidents, need a model fine-tuned on your own v
 | Field Name | Kind/Type | Required | Default | Description |
 |---|---|---|---|---|
 | `inputImage` | Image (object or list) | Yes | — | Video frames, one per request, in order |
+| `inputDetections` | list | Person Actions only | — | Detections of the same frame (e.g. YOLO). Needs `boundingBox` and `classLabel`; `trackerID` is used when present |
 
 ---
 
@@ -57,6 +68,13 @@ as falling, fighting or traffic incidents, need a model fine-tuned on your own v
 | `ScoreThreshold` | number | textInput | [0.0, 1.0] | 0.2 | Actions below this score are not reported (the best one is always reported) |
 | `DrawResult` | bool | dropdownlist | Enable / Disable | — | Write the latest predicted actions and scores on the output image |
 
+*Person Actions (AVA)* uses `Device`, `ClipFrames`, `InferenceInterval`, `TopK` (actions per person) and `DrawResult` as above, plus:
+
+| Parameter | Type | Field Type (UI control) | Allowed Values / Range | Default | Description |
+|---|---|---|---|---|---|
+| `PersonLabel` | string | textInput | any | person | `classLabel` of the detections to analyse; empty = every detection |
+| `ActionThreshold` | number | textInput | [0.0, 1.0] | 0.3 | Minimum probability for an action to be reported for a person; each action is scored on its own, so a person can have several |
+
 ---
 
 ## 4. Outputs
@@ -64,7 +82,8 @@ as falling, fighting or traffic incidents, need a model fine-tuned on your own v
 | Field Name | Kind/Type | Description |
 |---|---|---|
 | `outputImage` | Image (object or list) | The input frame, with the prediction drawn on it if Draw Result is enabled |
-| `actionResult` | list of dict | One row per action, best first: `{rank, action, score}` (Kinetics-400 or custom class names). Until the first clip is full: `[{rank: 0, action: "warming up", score: 0.0}]` |
+| `actionResult` | list of dict | *Action Recognition* only. One row per action, best first: `{rank, action, score}` (Kinetics-400 or custom class names). Until the first clip is full: `[{rank: 0, action: "warming up", score: 0.0}]` |
+| `outputDetections` | list of dict | *Person Actions* only. The person detections of the current frame with an added `actions` list `[{action, score}]`, best first; empty until the first clip is full or when no action passes Action Threshold |
 
 ---
 
@@ -92,6 +111,11 @@ Collection. Each clip gets the Kinetics labels that describe it, so a video arch
 action, or clips of a certain action can be collected to build a training set. Together with the
 fine-tuning notebook, these clips can be used to train SlowFast on your own classes.
 
+**Use case 4: Fall alert per person**
+
+Video Feed → YOLO (person) → Object Tracking → **SlowFast (Person Actions)** → If (any person has
+"fall down" above a limit) → Limit Rate → Notification. Object Tracking keeps each person's result
+attached to the right box between model runs.
 
 ---
 
@@ -103,6 +127,10 @@ fine-tuning notebook, these clips can be used to train SlowFast on your own clas
 - The Kinetics-400 classes cover sports, daily activities, playing instruments and similar actions. Classes such as "walking", "fighting" or "falling" are not in the list; recognizing them needs fine-tuning.
 - `pytorchvideo.transforms` does not work with torchvision >= 0.17, so preprocessing is implemented in `src/utils/clip.py`.
 - On an M1 Pro CPU one clip takes about 2.2 s, so predictions are made every few seconds, not every frame.
+- Person Actions downloads its own AVA checkpoint on first start (into the same weights folder). Its accuracy is
+  lower than Kinetics clip classification: frequent actions (stand, sit, walk, talk to) work best, rare ones such as
+  "fall down" are less reliable, and small or distant people are hard to recognise. Without Object Tracking, results
+  can drop out between model runs when the boxes move.
 
 ---
 
