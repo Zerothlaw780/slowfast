@@ -463,7 +463,7 @@ class ConfigExecutor(Config):
 
     class Config:
         title = "Task"
-        json_schema_extra = {"target": "value"}
+        json_schema_extra = {"shortDescription": "Select the task"}
 
 
 class PackageConfigs(Configs):
