@@ -11,6 +11,7 @@ from sdks.novavision.src.base.model import (
     Output,
     Input,
     Config,
+    Detection,
 )
 
 
@@ -86,7 +87,7 @@ class InputDetections(Input):
     """
 
     name: Literal["inputDetections"] = "inputDetections"
-    value: List
+    value: List[Detection]
     type: Literal["list"] = "list"
 
     class Config:
@@ -102,7 +103,7 @@ class OutputDetections(Output):
     """
 
     name: Literal["outputDetections"] = "outputDetections"
-    value: list
+    value: List[Detection]
     type: Literal["list"] = "list"
 
     class Config:
@@ -458,6 +459,7 @@ class ConfigExecutor(Config):
     value: Union[SlowFastExecutor, PersonActionsExecutor]
     type: Literal["executor"] = "executor"
     field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
+    restart: Literal[True] = True
 
     class Config:
         title = "Task"
