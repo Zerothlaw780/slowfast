@@ -83,7 +83,7 @@ as falling, fighting or traffic incidents, need a model fine-tuned on your own v
 |---|---|---|
 | `outputImage` | Image (object or list) | The input frame, with the prediction drawn on it if Draw Result is enabled |
 | `actionResult` | list of dict | *Action Recognition* only. One row per action, best first: `{rank, action, score}` (Kinetics-400 or custom class names). Until the first clip is full: `[{rank: 0, action: "warming up", score: 0.0}]` |
-| `outputDetections` | list of dict | *Person Actions* only. The person detections of the current frame with an added `actions` list `[{action, score}]`, best first; empty until the first clip is full or when no action passes Action Threshold |
+| `outputDetections` | list of dict | *Person Actions* only. The person detections of the current frame with the predicted actions added: `action` and `actionScore` (the best action and its probability) and `actions`, up to Top K `[{action, score}]`, best first. Until the first clip is full, or when no action passes Action Threshold, `action` is `""` and `actions` is empty |
 
 ---
 

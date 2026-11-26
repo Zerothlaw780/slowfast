@@ -126,7 +126,10 @@ class PersonActions(Capsule):
         self.output_detections = []
         for p in persons:
             d = dict(p)
-            d["actions"] = match_actions(p, buf.results) if buf.last_run is not None else []
+            actions = match_actions(p, buf.results) if buf.last_run is not None else []
+            d["action"] = actions[0]["action"] if actions else ""
+            d["actionScore"] = actions[0]["score"] if actions else 0.0
+            d["actions"] = actions
             self.output_detections.append(d)
 
         if self.draw:
