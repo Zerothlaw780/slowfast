@@ -355,7 +355,7 @@ class SlowFastInputs(Inputs):
 
 
 class SlowFastConfigs(Configs):
-    model: Model
+    # model: Model  # TEMP: disabled to check whether the Custom option breaks config saving
     device: Device
     clipFrames: ClipFrames
     inferenceInterval: InferenceInterval

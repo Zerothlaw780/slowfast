@@ -44,8 +44,9 @@ class SlowFast(Capsule):
         configs = self.request.model.configs.executor.value.value.configs
 
         self.image = self.request.get_param("inputImage")
-        model_cfg = configs.model.value
-        self.weights_id = model_cfg.weightsId.value if model_cfg.name == "Custom" else None
+        model = getattr(configs, "model", None)
+        model_cfg = model.value if model is not None else None
+        self.weights_id = model_cfg.weightsId.value if model_cfg is not None and model_cfg.name == "Custom" else None
         self.source = f"custom:{self.weights_id}" if self.weights_id is not None else "kinetics"
         self.device_name = configs.device.value.value  # "CPU" / "GPU"
         self.clip_frames = configs.clipFrames.value
