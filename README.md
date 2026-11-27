@@ -6,7 +6,7 @@
 
 **Status:** Experimental
 
-**Last Updated:** 20.11.2026
+**Last Updated:** 27.11.2026
 
 ---
 
@@ -131,6 +131,9 @@ attached to the right box between model runs.
   lower than Kinetics clip classification: frequent actions (stand, sit, walk, talk to) work best, rare ones such as
   "fall down" are less reliable, and small or distant people are hard to recognise. Without Object Tracking, results
   can drop out between model runs when the boxes move.
+- If a frame has already expired in Redis when SlowFast reads it (processing fell behind the video), the frame is
+  skipped with a log warning and the latest result is sent again, so the node keeps running and the clip stays intact.
+- A person who has just appeared gets an empty `action` until the next model run.
 
 ---
 
