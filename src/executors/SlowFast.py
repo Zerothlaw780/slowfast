@@ -118,15 +118,23 @@ class SlowFast(Capsule):
             streams[key] = buf
         return buf
 
+    def _result(self, buf):
+        """Top actions from the latest prediction (WARMING_UP until the first run)."""
+        if buf.probs is None:
+            return WARMING_UP
+        labels = self.bootstrap["state"]["labels"][self.source]
+        return top_actions(buf.probs, labels, self.top_k, self.score_threshold)
+
     def run(self):
         img = Image.get_frame(img=self.image, redis_db=self.redis_db)
-        if img is None:
-            raise ValueError(
-                "SlowFast - input image could not be read "
-                "(frame missing in Redis: it may have expired because processing fell behind)"
-            )
-
         buf = self._buffer()
+        if img is None:
+            # Frame expired in Redis (processing fell behind): skip it and keep the latest result
+            logger.warning("SlowFast - input frame missing in Redis (expired); frame skipped")
+            self.result = self._result(buf)
+            self.output_image = self.image
+            return build_response(context=self)
+
         buf.add(resize_crop(img.value))
 
         if buf.due(self.interval):
@@ -135,11 +143,7 @@ class SlowFast(Capsule):
             buf.mark_run(predict(model, to_inputs(list(buf.frames), device)))
             logger.info(f"SlowFast - inference on {device} took {time.time() - start:.2f} s")
 
-        if buf.probs is None:
-            self.result = WARMING_UP
-        else:
-            labels = self.bootstrap["state"]["labels"][self.source]
-            self.result = top_actions(buf.probs, labels, self.top_k, self.score_threshold)
+        self.result = self._result(buf)
 
         if self.draw:
             drawn = img.model_copy(deep=True)

@@ -106,16 +106,30 @@ class PersonActions(Capsule):
             for p, row in zip(persons, probs)
         ]
 
+    @staticmethod
+    def _label(persons, buf):
+        """Copy of each person with the action of the matching person from the latest run."""
+        out = []
+        for p in persons:
+            d = dict(p)
+            actions = match_actions(p, buf.results) if buf.last_run is not None else []
+            d["action"] = actions[0]["action"] if actions else ""
+            d["actionScore"] = actions[0]["score"] if actions else 0.0
+            d["actions"] = actions
+            out.append(d)
+        return out
+
     def run(self):
         img = Image.get_frame(img=self.image, redis_db=self.redis_db)
-        if img is None:
-            raise ValueError(
-                "SlowFast - input image could not be read "
-                "(frame missing in Redis: it may have expired because processing fell behind)"
-            )
-
         persons = person_detections(self.detections, self.person_label)
         buf = self._buffer()
+        if img is None:
+            # Frame expired in Redis (processing fell behind): skip it and keep the latest actions
+            logger.warning("SlowFast - input frame missing in Redis (expired); frame skipped")
+            self.output_detections = self._label(persons, buf)
+            self.output_image = self.image
+            return build_person_response(context=self)
+
         frame_rgb, scale = resize_short(img.value)
         buf.add(frame_rgb, scale, persons)
 
@@ -123,14 +137,7 @@ class PersonActions(Capsule):
             self._infer(buf)
             buf.last_run = buf.count
 
-        self.output_detections = []
-        for p in persons:
-            d = dict(p)
-            actions = match_actions(p, buf.results) if buf.last_run is not None else []
-            d["action"] = actions[0]["action"] if actions else ""
-            d["actionScore"] = actions[0]["score"] if actions else 0.0
-            d["actions"] = actions
-            self.output_detections.append(d)
+        self.output_detections = self._label(persons, buf)
 
         if self.draw:
             header = None if buf.last_run is not None else f"SlowFast: warming up {len(buf.frames)}/{self.clip_frames}"
