@@ -158,7 +158,7 @@ To run all checks at any time, use `pre-commit run --all-files`.
 
 **Workflow:**
 
-1. Branch off `develop` and open a PR back into `develop`. CI must pass.
+1. Work on `main`. For a larger change, use a short-lived branch and open a PR into `main`. CI must pass.
 2. Write commit messages as `<type>[(scope)]: <description>`, for example `feat: add threshold config` or `fix(executor): handle empty input`. The type sets the next version:
 
    | Type | Version bump |
@@ -168,4 +168,4 @@ To run all checks at any time, use `pre-commit run --all-files`.
    | `feat!` or a `BREAKING CHANGE:` footer | major |
    | `refactor`, `docs`, `style`, `test`, `build`, `ci`, `chore` | none |
 
-3. Merge `develop` into `main` to release. A release PR is then opened that bumps the version in `setup.py` and updates `CHANGELOG.md`. Merging it creates the tag and the GitHub Release. Don't edit the version yourself.
+3. Each push to `main` opens or updates a release PR that bumps the version in `setup.py` and updates `CHANGELOG.md`. Merging it creates the tag and the GitHub Release. Don't edit the version yourself.
