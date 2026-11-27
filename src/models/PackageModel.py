@@ -96,10 +96,11 @@ class InputDetections(Input):
 
 class OutputDetections(Output):
     """
-    The person detections of the current frame with an added "actions" field:
-    [{boundingBox, classLabel, ..., actions: [{action, score}]}], best action first. score is the
-    probability of that action (0-1); a person can have several actions (e.g. "stand" and "talk to").
-    actions is empty until the first clip is full and when no action passes Action Threshold.
+    The person detections of the current frame with the predicted actions added:
+    [{boundingBox, classLabel, ..., action, actionScore, actions: [{action, score}]}].
+    action / actionScore are the best action and its probability (0-1), handy for tables and filters;
+    actions lists up to Top K actions, best first (a person can have several, e.g. "stand" and "talk to").
+    Until the first clip is full, or when no action passes Action Threshold, action is "" and actions is empty.
     """
 
     name: Literal["outputDetections"] = "outputDetections"
@@ -355,7 +356,7 @@ class SlowFastInputs(Inputs):
 
 
 class SlowFastConfigs(Configs):
-    # model: Model  # TEMP: disabled to check whether the Custom option breaks config saving
+    model: Model
     device: Device
     clipFrames: ClipFrames
     inferenceInterval: InferenceInterval

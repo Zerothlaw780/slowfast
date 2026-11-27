@@ -30,7 +30,8 @@ def result_lines(rows, buffered: int, clip_frames: int):
 
 
 def draw_persons(frame_bgr: np.ndarray, detections, header=None) -> np.ndarray:
-    """Draws each person's box and its actions (best first) above the box; optional header line at the top-left."""
+    """Draws each person's box and its best action above the box; optional header line at the top-left.
+    Only one line per person, so labels of people standing close together stay readable."""
     out = frame_bgr.copy()
     h, w = out.shape[:2]
     scale = max(0.4, min(w, h) / 900)
@@ -41,7 +42,7 @@ def draw_persons(frame_bgr: np.ndarray, detections, header=None) -> np.ndarray:
         x1, y1 = int(b["left"]), int(b["top"])
         x2, y2 = int(b["left"] + b["width"]), int(b["top"] + b["height"])
         cv2.rectangle(out, (x1, y1), (x2, y2), (0, 200, 0), thickness)
-        lines = [f"{a['action']} {a['score']:.2f}" for a in det.get("actions", [])[:2]]
+        lines = [f"{a['action']} {a['score']:.2f}" for a in det.get("actions", [])[:1]]
         y = y1
         for text in reversed(lines):
             (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)
